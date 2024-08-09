@@ -1,3 +1,5 @@
+import os
+
 from genetic.crossover_and_mutation import CrossoverAndMutation
 from genetic.evaluate import FitnessEvaluate
 from genetic.population import Population
@@ -8,13 +10,14 @@ import numpy as np
 
 
 class EvolveCNN(object):
-    def __init__(self, params):
-        self.params = params
+    def __init__(self, parameter):
+        self.params = parameter
         self.pops = None
+        self.parent_pops = None
 
     def initialize_population(self):
         StatusUpdateTool.begin_evolution()
-        pops = Population(params, 0)
+        pops = Population(self.params, 0)
         pops.initialize()
         self.pops = pops
         Utils.save_population_at_begin(str(pops), 0)
@@ -67,7 +70,7 @@ class EvolveCNN(object):
         for _, indi in enumerate(self.pops.individuals):
             _t_str = 'new -%s-%.5f-%s' % (indi.id, indi.acc, indi.uuid()[0])
             _str.append(_t_str)
-        _file = './populations/ENVI_%2d.txt' % (self.pops.gen_no)
+        _file = './populations/ENVI_%2d.txt' % self.pops.gen_no
         Utils.write_to_file('\n'.join(_str), _file)
 
         Utils.save_population_at_begin(str(self.pops), self.pops.gen_no)
@@ -79,7 +82,7 @@ class EvolveCNN(object):
             Log.info('Initialize from existing population data')
             gen_no = Utils.get_newest_file_based_on_prefix('begin')
             if gen_no is not None:
-                Log.info('Initialize from %d-th generation' % (gen_no))
+                Log.info('Initialize from %d-th generation' % gen_no)
                 pops = Utils.load_population('begin', gen_no)
                 self.pops = pops
             else:
@@ -88,25 +91,43 @@ class EvolveCNN(object):
             gen_no = 0
             Log.info('Initialize...')
             self.initialize_population()
-        Log.info('EVOLVE[%d-gen]-Begin to evaluate the fitness' % (gen_no))
+        Log.info('EVOLVE[%d-gen]-Begin to evaluate the fitness' % gen_no)
         self.fitness_evaluate()
-        Log.info('EVOLVE[%d-gen]-Finish the evaluation' % (gen_no))
+        Log.info('EVOLVE[%d-gen]-Finish the evaluation' % gen_no)
         gen_no += 1
         for curr_gen in range(gen_no, max_gen):
             self.params['gen_no'] = curr_gen
             # step 3
-            Log.info('EVOLVE[%d-gen]-Begin to crossover and mutation' % (curr_gen))
+            Log.info('EVOLVE[%d-gen]-Begin to crossover and mutation' % curr_gen)
             self.crossover_and_mutation()
-            Log.info('EVOLVE[%d-gen]-Finish crossover and mutation' % (curr_gen))
+            Log.info('EVOLVE[%d-gen]-Finish crossover and mutation' % curr_gen)
 
-            Log.info('EVOLVE[%d-gen]-Begin to evaluate the fitness' % (curr_gen))
+            Log.info('EVOLVE[%d-gen]-Begin to evaluate the fitness' % curr_gen)
             self.fitness_evaluate()
-            Log.info('EVOLVE[%d-gen]-Finish the evaluation' % (curr_gen))
+            Log.info('EVOLVE[%d-gen]-Finish the evaluation' % curr_gen)
 
             self.environment_selection()
-            Log.info('EVOLVE[%d-gen]-Finish the environment selection' % (curr_gen))
+            Log.info('EVOLVE[%d-gen]-Finish the environment selection' % curr_gen)
 
         StatusUpdateTool.end_evolution()
+
+
+def run_evolution():
+    dir_names = ["log", "populations"]
+    for directory in dir_names:
+        files = os.listdir(directory)
+        for file in files:
+            if file.endswith(".txt"):
+                os.remove(os.path.join(directory, file))
+
+    script_files = os.listdir("scripts")
+    for file in script_files:
+        if "indi0" in file:
+            os.remove(os.path.join("scripts", file))
+
+    parameter = StatusUpdateTool.get_init_params()
+    evocnn = EvolveCNN(parameter)
+    evocnn.do_work(max_gen=20)
 
 
 if __name__ == '__main__':
