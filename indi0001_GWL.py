@@ -1,14 +1,21 @@
+"""
+2024-08-09  14:56:39
+"""
 from datetime import datetime
 from lightning.pytorch.callbacks import TQDMProgressBar
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from torchvision import datasets, transforms
+from torchvision import transforms
+from torch.utils.data import DataLoader
 import lightning as L
+import logging
+import numpy as np
 import os
 import sys
 import torch
 import torch.nn as nn
-import torch.utils.data as tdata
 import torchmetrics as tm
+import warnings
+import xarray as xr
 
 
 class BasicBlock(nn.Module):
@@ -41,39 +48,36 @@ class EvoCNNModel(nn.Module):
         super(EvoCNNModel, self).__init__()
 
         # conv unit
-        self.conv_3_128 = BasicBlock(in_planes=3, planes=128)
-        self.conv_128_128 = BasicBlock(in_planes=128, planes=128)
+        self.conv_3_128 = BasicBlock(in_planes=2, planes=128)
         self.conv_128_64 = BasicBlock(in_planes=128, planes=64)
-        self.conv_64_64 = BasicBlock(in_planes=64, planes=64)
         self.conv_64_128 = BasicBlock(in_planes=64, planes=128)
+        self.conv_128_128 = BasicBlock(in_planes=128, planes=128)
         self.conv_128_256 = BasicBlock(in_planes=128, planes=256)
         self.conv_256_256 = BasicBlock(in_planes=256, planes=256)
+        self.conv_256_128 = BasicBlock(in_planes=256, planes=128)
         self.conv_256_64 = BasicBlock(in_planes=256, planes=64)
-        self.conv_64_256 = BasicBlock(in_planes=64, planes=256)
 
         # linear unit
-        self.linear = nn.Linear(4096, 10)
+        self.linear = nn.LazyLinear(29)
 
     def forward(self, x):
         out_0 = self.conv_3_128(x)
-        out_1 = self.conv_128_128(out_0)
-        out_2 = self.conv_128_128(out_1)
+        out_1 = self.conv_128_64(out_0)
+        out_2 = self.conv_64_128(out_1)
         out_3 = self.conv_128_128(out_2)
-        out_4 = self.conv_128_128(out_3)
-        out_5 = self.conv_128_64(out_4)
-        out_6 = self.conv_64_64(out_5)
-        out_7 = self.conv_64_128(out_6)
-        out_8 = nn.functional.avg_pool2d(out_7, 2)
-        out_9 = self.conv_128_128(out_8)
-        out_10 = self.conv_128_256(out_9)
-        out_11 = self.conv_256_256(out_10)
-        out_12 = self.conv_256_256(out_11)
-        out_13 = self.conv_256_256(out_12)
-        out_14 = nn.functional.avg_pool2d(out_13, 2)
-        out_15 = self.conv_256_64(out_14)
-        out_16 = nn.functional.avg_pool2d(out_15, 2)
-        out_17 = self.conv_64_256(out_16)
-        out = out_17
+        out_4 = self.conv_128_256(out_3)
+        out_5 = nn.functional.avg_pool2d(out_4, 2)
+        out_6 = self.conv_256_256(out_5)
+        out_7 = self.conv_256_128(out_6)
+        out_8 = self.conv_128_128(out_7)
+        out_9 = self.conv_128_256(out_8)
+        out_10 = nn.functional.max_pool2d(out_9, 2)
+        out_11 = self.conv_256_64(out_10)
+        out_12 = self.conv_64_128(out_11)
+        out_13 = self.conv_128_256(out_12)
+        out_14 = self.conv_256_64(out_13)
+        out_15 = nn.functional.max_pool2d(out_14, 2)
+        out = out_15
 
         out = out.view(out.size(0), -1)
         out = self.linear(out)
@@ -100,7 +104,7 @@ class MyProgressBar(TQDMProgressBar):
         return bar
 
 
-class CIFAR10DataModule(L.LightningDataModule):
+class GWLDataModule(L.LightningDataModule):
     def __init__(self, data_dir='dataset', batch_size=128, num_workers=1):
         super().__init__()
         self.data_train = None
@@ -109,37 +113,46 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])])
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    def prepare_data(self):
-        datasets.CIFAR10(root=self.data_dir, train=True, download=False)
-        datasets.CIFAR10(root=self.data_dir, train=False, download=False)
 
     def setup(self, stage=None):
-        self.data_train = datasets.CIFAR10(root=self.data_dir, train=True, transform=self.transform)
-        self.data_val = datasets.CIFAR10(root=self.data_dir, train=False, transform=self.transform)
+        gwl_train, gwl_test, indices_test, indices_training = load_gwl()
+        geo_train, geo_test = load_data("C:/Users/Philipp/PycharmProjects/cnn/ERA20/daily/129_r/129.nc", 129,
+                                        indices_test, indices_training)
+        mslp_train, mslp_test = load_data("C:/Users/Philipp/PycharmProjects/cnn/ERA20/daily/151_r/151.nc", 151,
+                                          indices_test, indices_training)
+
+        train_data = torch.stack([geo_train, mslp_train], dim=1)
+        test_data = torch.stack([geo_test, mslp_test], dim=1)
+
+        # Assign train/val datasets for use in dataloaders
+        self.data_train = torch.utils.data.TensorDataset(train_data, gwl_train)
+
+        self.data_val = torch.utils.data.TensorDataset(test_data, gwl_test)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.data_train, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, persistent_workers=True)
+                                           num_workers=self.num_workers, pin_memory=True, persistent_workers=True)
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.data_val, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, persistent_workers=True)
+                                           num_workers=self.num_workers, pin_memory=True, persistent_workers=True)
 
 
 def training_loop() -> None:
+    warnings.filterwarnings("ignore", ".*Consider increasing the value of the `num_workers` argument*")
+    warnings.filterwarnings("ignore", ".*Lazy modules are a new feature under heavy development*")
+    warnings.filterwarnings("ignore", ".*The total number of parameters detected may*")
+    logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.set_float32_matmul_precision('high')
 
     model = LightningModule()
 
-    data_module = CIFAR10DataModule()
+    data_module = GWLDataModule()
 
-    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, enable_checkpointing=False,
+    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, precision="bf16-mixed",
+                        enable_checkpointing=False,
                         callbacks=[MyProgressBar(), EarlyStopping(monitor="valid_acc", mode="max", patience=10)])
 
     trainer.fit(model, data_module)
@@ -149,8 +162,8 @@ class LightningModule(L.LightningModule):
     def __init__(self):
         super().__init__()
         self.model = EvoCNNModel()
-        self.train_acc = tm.Accuracy(task="multiclass", num_classes=10)
-        self.valid_acc = tm.Accuracy(task="multiclass", num_classes=10)
+        self.train_acc = tm.Accuracy(task="multiclass", num_classes=29)
+        self.valid_acc = tm.Accuracy(task="multiclass", num_classes=29)
         self.file_id = os.path.basename(__file__).split('.')[0]
         self.best_acc = 0
 
@@ -178,10 +191,10 @@ class LightningModule(L.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         self.log_record('Train-Epoch:%3d,  Loss: %.3f, Acc:%.3f' % (
-            self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
-            self.trainer.logged_metrics.get("valid_acc").item()))
-        if self.trainer.logged_metrics.get("valid_acc").item() > self.best_acc:
-            self.best_acc = self.trainer.logged_metrics.get("valid_acc").item()
+            self.current_epoch, self.trainer.logged_metrics.get("my_loss").detach(),
+            self.trainer.logged_metrics.get("valid_acc").detach()))
+        if self.trainer.logged_metrics.get("valid_acc").detach() > self.best_acc:
+            self.best_acc = self.trainer.logged_metrics.get("valid_acc").detach()
 
     def on_train_end(self) -> None:
         self.log_record('Finished-Acc:%.3f' % self.best_acc)
@@ -193,6 +206,27 @@ class LightningModule(L.LightningModule):
         dt.strftime('%Y-%m-%d %H:%M:%S')
         with open(f"log/{self.file_id}.txt", 'a+') as f:
             f.write('[%s]-%s\n' % (dt, _str))
+
+
+def load_gwl():
+    ds = xr.load_dataset("C:/Users/Philipp/PycharmProjects/cnn/Wetterlagen/GWL_Hess_Brezowsky_1881-2022.nc")
+    gwl_train = ds.sel(time=slice('1900-01-01', '1969-12-31')).GWL.to_numpy()
+    gwl_train -= 1
+    gwl_test = ds.sel(time=slice('1970-01-01', '1979-12-31')).GWL.to_numpy()
+    gwl_test -= 1
+    indices_test = np.nonzero(gwl_test != 29)
+    indices_training = np.nonzero(gwl_train != 29)
+    return torch.LongTensor(gwl_train[indices_training]), torch.LongTensor(
+        gwl_test[indices_test]), indices_test, indices_training
+
+
+def load_data(input_path, var, indices_test, indices_training):
+    data = xr.load_dataset(input_path)[f"var{var}"]
+    data = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    data_train = data.sel(time=slice('1900-01-01', '1969-12-31')).to_numpy()
+    data_test = data.sel(time=slice('1970-01-01', '1979-12-31')).to_numpy()
+    return torch.from_numpy(data_train[indices_training].astype(np.float32)), torch.from_numpy(
+        data_test[indices_test].astype(np.float32))
 
 
 if __name__ == '__main__':
