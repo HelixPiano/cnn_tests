@@ -2,16 +2,17 @@
 from datetime import datetime
 from lightning.pytorch.callbacks import TQDMProgressBar
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
 import lightning as L
 import logging
+import numpy as np
 import os
 import sys
 import torch
 import torch.nn as nn
-import torch.utils.data as tdata
 import torchmetrics as tm
 import warnings
+import xarray as xr
 
 
 class BasicBlock(nn.Module):
@@ -25,10 +26,10 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
+        if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(self.expansion*planes)
+                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(self.expansion * planes)
             )
 
     def forward(self, x):
@@ -47,7 +48,7 @@ class EvoCNNModel(nn.Module):
     def forward(self, x):
         #generate_forward
 
-        out = out.view(out.size(0), -1)
+        out = torch.flatten(out, 1)
         out = self.linear(out)
         return out
 
@@ -72,7 +73,7 @@ class MyProgressBar(TQDMProgressBar):
         return bar
 
 
-class CIFAR10DataModule(L.LightningDataModule):
+class GWLDataModule(L.LightningDataModule):
     def __init__(self, data_dir='dataset', batch_size=128, num_workers=1):
         super().__init__()
         self.data_train = None
@@ -81,16 +82,21 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.data_dir = data_dir
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.transform = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])])
-
-    def prepare_data(self):
-        datasets.CIFAR10(root=self.data_dir, train=True, download=False)
-        datasets.CIFAR10(root=self.data_dir, train=False, download=False)
 
     def setup(self, stage=None):
-        self.data_train = datasets.CIFAR10(root=self.data_dir, train=True, transform=self.transform)
-        self.data_val = datasets.CIFAR10(root=self.data_dir, train=False, transform=self.transform)
+        gwl_train, gwl_test, indices_test, indices_training = load_gwl()
+        geo_train, geo_test = load_data("C:/Users/Philipp/PycharmProjects/cnn/ERA20/daily/129_r/129.nc", 129,
+                                        indices_test, indices_training)
+        mslp_train, mslp_test = load_data("C:/Users/Philipp/PycharmProjects/cnn/ERA20/daily/151_r/151.nc", 151,
+                                          indices_test, indices_training)
+
+        train_data = torch.stack([geo_train, mslp_train], dim=1)
+        test_data = torch.stack([geo_test, mslp_test], dim=1)
+
+        # Assign train/val datasets for use in dataloaders
+        self.data_train = torch.utils.data.TensorDataset(train_data, gwl_train)
+
+        self.data_val = torch.utils.data.TensorDataset(test_data, gwl_test)
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.data_train, batch_size=self.batch_size,
@@ -103,6 +109,8 @@ class CIFAR10DataModule(L.LightningDataModule):
 
 def training_loop() -> None:
     warnings.filterwarnings("ignore", ".*Consider increasing the value of the `num_workers` argument*")
+    warnings.filterwarnings("ignore", ".*Lazy modules are a new feature under heavy development*")
+    warnings.filterwarnings("ignore", ".*The total number of parameters detected may*")
     logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
@@ -110,21 +118,24 @@ def training_loop() -> None:
 
     model = LightningModule()
 
-    data_module = CIFAR10DataModule()
+    data_module = GWLDataModule()
 
     trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, precision="bf16-mixed",
                         enable_checkpointing=False,
                         callbacks=[MyProgressBar(), EarlyStopping(monitor="valid_acc", mode="max", patience=10)])
 
-    trainer.fit(model, data_module)
+    try:
+        trainer.fit(model, data_module)
+    except:
+        model.on_fail()
 
 
 class LightningModule(L.LightningModule):
     def __init__(self):
         super().__init__()
         self.model = EvoCNNModel()
-        self.train_acc = tm.Accuracy(task="multiclass", num_classes=10)
-        self.valid_acc = tm.Accuracy(task="multiclass", num_classes=10)
+        self.train_acc = tm.Accuracy(task="multiclass", num_classes=29)
+        self.valid_acc = tm.Accuracy(task="multiclass", num_classes=29)
         self.file_id = os.path.basename(__file__).split('.')[0]
         self.best_acc = 0
 
@@ -162,11 +173,37 @@ class LightningModule(L.LightningModule):
         with open('populations/after_%s.txt' % (self.file_id[4:6]), 'a+') as f:
             f.write('%s=%.5f\n' % (self.file_id, self.best_acc))
 
+    def on_fail(self) -> None:
+        self.log_record('Finished-Acc:%.3f' % -100)
+        with open('populations/after_%s.txt' % (self.file_id[4:6]), 'a+') as f:
+            f.write('%s=%.5f\n' % (self.file_id, -100))
+
     def log_record(self, _str):
         dt = datetime.now()
         dt.strftime('%Y-%m-%d %H:%M:%S')
         with open(f"log/{self.file_id}.txt", 'a+') as f:
             f.write('[%s]-%s\n' % (dt, _str))
+
+
+def load_gwl():
+    ds = xr.load_dataset("C:/Users/Philipp/PycharmProjects/cnn/Wetterlagen/GWL_Hess_Brezowsky_1881-2022.nc")
+    gwl_train = ds.sel(time=slice('1900-01-01', '1969-12-31')).GWL.to_numpy()
+    gwl_train -= 1
+    gwl_test = ds.sel(time=slice('1970-01-01', '1979-12-31')).GWL.to_numpy()
+    gwl_test -= 1
+    indices_test = np.nonzero(gwl_test != 29)
+    indices_training = np.nonzero(gwl_train != 29)
+    return torch.LongTensor(gwl_train[indices_training]), torch.LongTensor(
+        gwl_test[indices_test]), indices_test, indices_training
+
+
+def load_data(input_path, var, indices_test, indices_training):
+    data = xr.load_dataset(input_path)[f"var{var}"]
+    data = (data - np.mean(data, axis=0)) / np.std(data, axis=0)
+    data_train = data.sel(time=slice('1900-01-01', '1969-12-31')).to_numpy()
+    data_test = data.sel(time=slice('1970-01-01', '1979-12-31')).to_numpy()
+    return torch.from_numpy(data_train[indices_training].astype(np.float32)), torch.from_numpy(
+        data_test[indices_test].astype(np.float32))
 
 """
 

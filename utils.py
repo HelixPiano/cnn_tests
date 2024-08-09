@@ -39,8 +39,7 @@ class StatusUpdateTool(object):
     def begin_evolution(cls):
         section = 'evolution_status'
         key = 'IS_RUNNING'
-        # Deactivated this.
-        # cls.__write_ini_file(section, key, "1")
+        cls.__write_ini_file(section, key, "1")
 
     @classmethod
     def end_evolution(cls):
@@ -375,7 +374,7 @@ class Utils(object):
 
     @classmethod
     def read_template(cls):
-        _path = './template/cifar11.py'
+        _path = './template/GWL.py'
         part1 = []
         part2 = []
         part3 = []
@@ -425,8 +424,8 @@ class Utils(object):
             else:
                 out_channel_list.append(out_channel_list[-1])
                 image_output_size = int(image_output_size / 2)
-        fully_layer_name = 'self.linear = nn.Linear(%d, %d)' % (
-            image_output_size * image_output_size * out_channel_list[-1], StatusUpdateTool.get_num_class())
+
+        fully_layer_name = 'self.linear = nn.LazyLinear(%d)' % (StatusUpdateTool.get_num_class())
         # print(fully_layer_name, out_channel_list, image_output_size)
 
         # generate the forward part
@@ -447,6 +446,8 @@ class Utils(object):
                     _string = 'out_%d = nn.functional.avg_pool2d(out_%d, 2)' % (i, i - 1)
                 forward_list.append(_string)
         forward_list.append('out = out_%d' % (len(indi.units) - 1))
+        if np.random.uniform() > 0.5:
+            forward_list.append('out = nn.functional.adaptive_avg_pool2d(out,(1,1))')
         # print('\n'.join(forward_list))
 
         part1, part2, part3 = cls.read_template()

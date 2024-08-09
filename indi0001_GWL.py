@@ -4,7 +4,6 @@
 from datetime import datetime
 from lightning.pytorch.callbacks import TQDMProgressBar
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from torchvision import transforms
 from torch.utils.data import DataLoader
 import lightning as L
 import logging

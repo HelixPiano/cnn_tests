@@ -133,4 +133,4 @@ def run_evolution():
 if __name__ == '__main__':
     params = StatusUpdateTool.get_init_params()
     evoCNN = EvolveCNN(params)
-    evoCNN.do_work(max_gen=20)
+    evoCNN.do_work(max_gen=5)

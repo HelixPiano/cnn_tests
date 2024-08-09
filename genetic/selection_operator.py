@@ -20,7 +20,8 @@ def rouletteselection(_a, k):
 
 
 def numpy_rouletteselection(_a, k):
-    return np.random.choice(_a, size=k, replace=True).tolist()
+    print("arrived")
+    return np.random.choice(np.arange(0, len(_a)), size=k, replace=True).tolist()
 
 
 if __name__ == '__main__':
