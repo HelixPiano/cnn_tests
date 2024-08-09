@@ -104,7 +104,7 @@ class MyProgressBar(TQDMProgressBar):
 
 
 class CIFAR10DataModule(L.LightningDataModule):
-    def __init__(self, data_dir='dataset', batch_size=128, num_workers=1):
+    def __init__(self, data_dir='../dataset', batch_size=128, num_workers=1):
         super().__init__()
         self.data_train = None
         self.data_test = None
@@ -141,7 +141,7 @@ def training_loop() -> None:
 
     data_module = CIFAR10DataModule()
 
-    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False,
+    trainer = L.Trainer(max_epochs=100, fast_dev_run=False, accelerator="gpu", logger=False,
                         callbacks=[MyProgressBar(), EarlyStopping(monitor="valid_acc", mode="max", patience=10)])
 
     trainer.fit(model, data_module)

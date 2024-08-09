@@ -104,7 +104,7 @@ class MyProgressBar(TQDMProgressBar):
 
 
 class CIFAR10DataModule(L.LightningDataModule):
-    def __init__(self, data_dir='../dataset', batch_size=128, num_workers=1):
+    def __init__(self, data_dir='dataset', batch_size=128, num_workers=1):
         super().__init__()
         self.data_train = None
         self.data_test = None
@@ -114,6 +114,7 @@ class CIFAR10DataModule(L.LightningDataModule):
         self.num_workers = num_workers
         self.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])])
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def prepare_data(self):
         datasets.CIFAR10(root=self.data_dir, train=True, download=False)
@@ -125,11 +126,11 @@ class CIFAR10DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.data_train, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, pin_memory=True,persistent_workers=True)
+                                           num_workers=self.num_workers, persistent_workers=True)
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.data_val, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, pin_memory=True,persistent_workers=True)
+                                           num_workers=self.num_workers, persistent_workers=True)
 
 
 def training_loop() -> None:
@@ -141,7 +142,7 @@ def training_loop() -> None:
 
     data_module = CIFAR10DataModule()
 
-    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False,
+    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, enable_checkpointing=False,
                         callbacks=[MyProgressBar(), EarlyStopping(monitor="valid_acc", mode="max", patience=10)])
 
     trainer.fit(model, data_module)
@@ -154,6 +155,7 @@ class LightningModule(L.LightningModule):
         self.train_acc = tm.Accuracy(task="multiclass", num_classes=10)
         self.valid_acc = tm.Accuracy(task="multiclass", num_classes=10)
         self.file_id = os.path.basename(__file__).split('.')[0]
+        self.best_acc = 0
 
     def forward(self, inputs):
         return self.model(inputs)
@@ -174,15 +176,22 @@ class LightningModule(L.LightningModule):
         self.valid_acc(y_hat, target)
         self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True)
 
-
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=0.0001)
 
     def on_train_epoch_end(self) -> None:
         self.log_record('Train-Epoch:%3d,  Loss: %.3f, Acc:%.3f' % (
-        self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
-        self.trainer.logged_metrics.get("valid_acc").item()))
-        # pass
+            self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
+            self.trainer.logged_metrics.get("valid_acc").item()))
+        if self.trainer.logged_metrics.get("valid_acc").item() > self.best_acc:
+            self.best_acc = self.trainer.logged_metrics.get("valid_acc").item()
+
+    def on_train_end(self) -> None:
+        self.log_record('Finished-Acc:%.3f' % self.best_acc)
+        f = open('populations/after_%s.txt' % (self.file_id[4:6]), 'a+')
+        f.write('%s=%.5f\n' % (self.file_id, self.best_acc))
+        f.flush()
+        f.close()
 
     def log_record(self, _str, first_time=None):
         dt = datetime.now()
@@ -191,7 +200,7 @@ class LightningModule(L.LightningModule):
             file_mode = 'w'
         else:
             file_mode = 'a+'
-        f = open('../log/%s.txt' % (self.file_id), file_mode)
+        f = open('log/%s.txt' % (self.file_id), file_mode)
         f.write('[%s]-%s\n' % (dt, _str))
         f.flush()
         f.close()
