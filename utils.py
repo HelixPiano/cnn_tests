@@ -39,7 +39,8 @@ class StatusUpdateTool(object):
     def begin_evolution(cls):
         section = 'evolution_status'
         key = 'IS_RUNNING'
-        cls.__write_ini_file(section, key, "1")
+        # Deactivated this.
+        # cls.__write_ini_file(section, key, "1")
 
     @classmethod
     def end_evolution(cls):
