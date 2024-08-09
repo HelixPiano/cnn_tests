@@ -105,15 +105,15 @@ class Individual(object):
             _sub_str = []
             if unit.type == 1:
                 _sub_str.append('conv')
-                _sub_str.append('number:%d' % (unit.number))
-                _sub_str.append('in:%d' % (unit.in_channel))
-                _sub_str.append('out:%d' % (unit.out_channel))
+                _sub_str.append('number:%d' % unit.number)
+                _sub_str.append('in:%d' % unit.in_channel)
+                _sub_str.append('out:%d' % unit.out_channel)
 
             if unit.type == 2:
                 _sub_str.append('pool')
-                _sub_str.append('number:%d' % (unit.number))
+                _sub_str.append('number:%d' % unit.number)
                 _pool_type = 0.25 if unit.max_or_avg < 0.5 else 0.75
-                _sub_str.append('type:%.1f' % (_pool_type))
+                _sub_str.append('type:%.1f' % _pool_type)
             _str.append('%s%s%s' % ('[', ','.join(_sub_str), ']'))
         _final_str_ = '-'.join(_str)
         _final_utf8_str_ = _final_str_.encode('utf-8')
@@ -121,21 +121,19 @@ class Individual(object):
         return _hash_key, _final_str_
 
     def __str__(self):
-        _str = []
-        _str.append('indi:%s' % (self.id))
-        _str.append('Acc:%.5f' % (self.acc))
+        _str = ['indi:%s' % self.id, 'Acc:%.5f' % self.acc]
         for unit in self.units:
             _sub_str = []
             if unit.type == 1:
                 _sub_str.append('conv')
-                _sub_str.append('number:%d' % (unit.number))
-                _sub_str.append('in:%d' % (unit.in_channel))
-                _sub_str.append('out:%d' % (unit.out_channel))
+                _sub_str.append('number:%d' % unit.number)
+                _sub_str.append('in:%d' % unit.in_channel)
+                _sub_str.append('out:%d' % unit.out_channel)
 
             if unit.type == 2:
                 _sub_str.append('pool')
-                _sub_str.append('number:%d' % (unit.number))
-                _sub_str.append('type:%.1f' % (unit.max_or_avg))
+                _sub_str.append('number:%d' % unit.number)
+                _sub_str.append('type:%.1f' % unit.max_or_avg)
             _str.append('%s%s%s' % ('[', ','.join(_sub_str), ']'))
         return '\n'.join(_str)
 
@@ -174,14 +172,8 @@ class Population(object):
 
 
 def test_individual():
-    params = {}
-    params['min_conv'] = 30
-    params['max_conv'] = 40
-    params['min_pool'] = 3
-    params['max_pool'] = 4
-    params['max_len'] = 20
-    params['image_channel'] = 3
-    params['output_channel'] = [64, 128, 256, 512]
+    params = {'min_conv': 30, 'max_conv': 40, 'min_pool': 3, 'max_pool': 4, 'max_len': 20, 'image_channel': 3,
+              'output_channel': [64, 128, 256, 512]}
     ind = Individual(params, 0)
     ind.initialize()
     print(ind)
@@ -189,19 +181,9 @@ def test_individual():
 
 
 def test_population():
-    params = {}
-    params['pop_size'] = 20
-    params['min_conv'] = 10
-    params['max_conv'] = 15
-    params['min_pool'] = 3
-    params['max_pool'] = 4
-    params['max_len'] = 20
-    params['conv_kernel'] = [1, 2, 3]
-    params['conv_stride'] = [1, 2, 3]
-    params['pool_kernel'] = 2
-    params['pool_stride'] = 2
-    params['image_channel'] = 3
-    params['output_channel'] = [64, 128, 256, 512]
+    params = {'pop_size': 20, 'min_conv': 10, 'max_conv': 15, 'min_pool': 3, 'max_pool': 4, 'max_len': 20,
+              'conv_kernel': [1, 2, 3], 'conv_stride': [1, 2, 3], 'pool_kernel': 2, 'pool_stride': 2,
+              'image_channel': 3, 'output_channel': [64, 128, 256, 512]}
     pop = Population(params, 0)
     pop.initialize()
     print(pop)
