@@ -7,7 +7,9 @@ properties of conv
                     ----pooling type
                     ----connections
 
-for each individual, use 5 bits to denotes such five operations then do bit-wise flip, if flip, then the operation is done
+for each individual, use 5 bits to denotes such five operations then do bit-wise flip, if flip,
+    then the operation is done
+
 for each operation
                 ---add conv/pool    | use bits to denote the units, then do bit-wise flip to determine where to add
                 ---remove conv/pool | the same to the above
@@ -15,7 +17,6 @@ for each operation
 from utils import StatusUpdateTool, Utils
 import copy
 import numpy as np
-import random
 
 
 class CrossoverAndMutation(object):
@@ -88,7 +89,8 @@ class Crossover(object):
     calculate the number of pooling units after the crossover is done
     """
 
-    def _calculate_pool_numbers(self, parent1, parent2):
+    @classmethod
+    def _calculate_pool_numbers(cls, parent1, parent2):
         t1, t2 = 0, 0
         for unit in parent1.units:
             if unit.type == 2:
@@ -126,13 +128,14 @@ class Crossover(object):
         for _ in range(len(self.individuals) // 2):
             ind1, ind2 = self._choose_two_diff_parents()
             parent1, parent2 = copy.deepcopy(self.individuals[ind1]), copy.deepcopy(self.individuals[ind2])
-            p_ = random.random()
+            p_ = np.random.uniform()
             if p_ < self.prob:
                 _stat_param['offspring_new'] += 2
                 """
                 exchange their units from these parent individuals, the exchanged units must satisfy
                 --- the number of pooling layer should not be more than the predefined setting
-                --- if their is no changing after this crossover, keep the original acc -- a mutation should be given [to do---]
+                --- if their is no changing after this crossover, keep the original acc 
+                -- a mutation should be given [to do---]
                 """
                 first_begin_is_pool, second_begin_is_pool = True, True
                 while first_begin_is_pool is True or second_begin_is_pool is True:
@@ -141,7 +144,7 @@ class Crossover(object):
                     while pool_len1 > self.pool_limit or pool_len2 > self.pool_limit:
                         pos1, pos2, pool_len1, pool_len2 = self._calculate_pool_numbers(parent1, parent2)
                         try_count += 1
-                        self.log.warn('The %d-th try to find the position for do crossover' % (try_count))
+                        self.log.warn('The %d-th try to find the position for do crossover' % try_count)
                     self.log.info('Position %d for %s, positions %d for %s' % (pos1, parent1.id, pos2, parent2.id))
                     unit_list1, unit_list2 = [], []
                     for i in range(0, pos1):
@@ -223,6 +226,10 @@ class Crossover(object):
         return new_offspring_list
 
 
+def select_mutation_type(_a):
+    return np.random.choice(np.arange(len(_a)), size=1, replace=True, p=_a).item()
+
+
 class Mutation(object):
 
     def __init__(self, individuals, prob_, _log):
@@ -236,10 +243,10 @@ class Mutation(object):
 
         mutation_list = StatusUpdateTool.get_mutation_probs_for_each()
         for indi in self.individuals:
-            p_ = random.random()
+            p_ = np.random.uniform()
             if p_ < self.prob:
                 _stat_param['offspring_new'] += 1
-                mutation_type = self.select_mutation_type(mutation_list)
+                mutation_type = select_mutation_type(mutation_list)
                 if mutation_type == 0:
                     _stat_param['ADD'] += 1
                     self.do_add_unit_mutation(indi)
@@ -253,11 +260,11 @@ class Mutation(object):
                     _stat_param['POOLING_TYPE'] += 1
                     self.do_modify_pooling_type_mutation(indi)
                 else:
-                    raise TypeError('Error mutation type :%d, validate range:0-4' % (mutation_type))
+                    raise TypeError('Error mutation type :%d, validate range:0-4' % mutation_type)
             else:
                 _stat_param['offspring_from_parent'] += 1
         self.log.info('MUTATION-mutated individuals:%d[ADD:%2d,REMOVE:%2d,CHANNEL:%2d,POOL:%2d, no_changes:%d' % (
-            _stat_param['offspring_new'], \
+            _stat_param['offspring_new'],
             _stat_param['ADD'], _stat_param['REMOVE'], _stat_param['CHANNEL'], _stat_param['POOLING_TYPE'],
             _stat_param['offspring_from_parent']))
 
@@ -272,7 +279,7 @@ class Mutation(object):
         mutation_position = int(np.floor(np.random.random() * len(indi.units)))
         self.log.info('Mutation position occurs at %d' % mutation_position)
         # determine the unit type for adding
-        u_ = random.random()
+        u_ = np.random.uniform()
         type_ = 1 if u_ < 0.5 else 2
         self.log.info(
             'A %s unit would be added due to the probability of %.2f' % ('CONV' if type_ == 1 else 'POOLING', u_))
@@ -315,11 +322,11 @@ class Mutation(object):
         indi.reset_acc()
 
     def do_remove_unit_mutation(self, indi):
-        self.log.info('Do the REMOVE mutation for indi:%s' % (indi.id))
+        self.log.info('Do the REMOVE mutation for indi:%s' % indi.id)
         if len(indi.units) > 1:
             mutation_position = int(
                 np.floor(np.random.random() * (len(indi.units) - 1))) + 1  # the first unit would not be removed
-            self.log.info('Mutation position occurs at %d' % (mutation_position))
+            self.log.info('Mutation position occurs at %d' % mutation_position)
             if indi.units[mutation_position].type == 1:
                 for i in range(mutation_position, -1, -1):
                     if indi.units[i].type == 1:
@@ -338,7 +345,7 @@ class Mutation(object):
             self.log.warn('REMOVE mutation can not be performed due to it has only one unit')
 
     def do_modify_conv_mutation(self, indi):
-        self.log.info('Do the CHANNEL mutation for indi:%s' % (indi.id))
+        self.log.info('Do the CHANNEL mutation for indi:%s' % indi.id)
         conv_index_list = []
         for i, unit in enumerate(indi.units):
             if unit.type == 1:
@@ -391,7 +398,7 @@ class Mutation(object):
                     channel_list[index_]))
 
     def do_modify_pooling_type_mutation(self, indi):
-        self.log.info('Do the POOLING TYPE mutation for indi:%s' % (indi.id))
+        self.log.info('Do the POOLING TYPE mutation for indi:%s' % indi.id)
         pool_list_index = []
         for i, unit in enumerate(indi.units):
             if unit.type == 2:
@@ -408,24 +415,6 @@ class Mutation(object):
                 indi.units[pool_list_index[selected_index]].max_or_avg = 0.75
                 self.log.info('Pool type from max_pool (<0.5) to avg_pool (>0.5)')
             indi.reset_acc()
-
-    def select_mutation_type(self, _a):
-        a = np.asarray(_a)
-        k = 1
-        idx = np.argsort(a)
-        idx = idx[::-1]
-        sort_a = a[idx]
-        sum_a = np.sum(a).astype(np.float32)
-        selected_index = []
-        for i in range(k):
-            u = np.random.rand() * sum_a
-            sum_ = 0
-            for i in range(sort_a.shape[0]):
-                sum_ += sort_a[i]
-                if sum_ > u:
-                    selected_index.append(idx[i])
-                    break
-        return selected_index[0]
 
 
 if __name__ == '__main__':
