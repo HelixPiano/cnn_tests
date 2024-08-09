@@ -1,8 +1,6 @@
 from utils import Utils, GPUTools
 import importlib
-from multiprocessing import Process
 import time, os, sys
-from asyncio.tasks import sleep
 
 
 class FitnessEvaluate(object):
@@ -16,8 +14,6 @@ class FitnessEvaluate(object):
         for indi in self.individuals:
             Utils.generate_pytorch_file(indi)
         self.log.info('Finish the generation of python files')
-        #TODO: Remove exit call. Just here for debugging
-        exit(0)
 
     def evaluate(self):
         """
@@ -32,7 +28,7 @@ class FitnessEvaluate(object):
                 _count += 1
                 _acc = _map[_key]
                 self.log.info('Hit the cache for %s, key:%s, acc:%.5f, assigned_acc:%.5f' % (
-                indi.id, _key, float(_acc), indi.acc))
+                    indi.id, _key, float(_acc), indi.acc))
                 indi.acc = float(_acc)
         self.log.info('Total hit %d individuals for fitness' % (_count))
 
@@ -91,7 +87,7 @@ class FitnessEvaluate(object):
                     if indi.id not in fitness_map:
                         self.log.warn(
                             'The individuals have been evaluated, but the records are not correct, the fitness of %s does not exist in %s, wait 120 seconds' % (
-                            indi.id, file_name))
+                                indi.id, file_name))
                         sleep(120)  #
                     indi.acc = fitness_map[indi.id]
         else:

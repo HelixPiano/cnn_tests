@@ -12,10 +12,10 @@ for each operation
                 ---add conv/pool    | use bits to denote the units, then do bit-wise flip to determine where to add
                 ---remove conv/pool | the same to the above
 """
-import random
-import numpy as np
-import copy
 from utils import StatusUpdateTool, Utils
+import copy
+import numpy as np
+import random
 
 
 class CrossoverAndMutation(object):

@@ -1,13 +1,12 @@
-import configparser
-import os
-import numpy as np
-from subprocess import Popen, PIPE
 from genetic.population import Population, Individual, ResUnit, PoolUnit
+from subprocess import Popen, PIPE
+import configparser
 import logging
-import sys
 import multiprocessing
+import numpy as np
+import os
+import sys
 import time
-
 
 class StatusUpdateTool(object):
     @classmethod

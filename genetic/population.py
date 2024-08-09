@@ -1,6 +1,6 @@
-import numpy as np
-import hashlib
 import copy
+import hashlib
+import numpy as np
 
 class Unit(object):
     def __init__(self, number):

@@ -1,10 +1,10 @@
-from utils import StatusUpdateTool, Utils, Log
-from genetic.population import Population
-from genetic.evaluate import FitnessEvaluate
 from genetic.crossover_and_mutation import CrossoverAndMutation
+from genetic.evaluate import FitnessEvaluate
+from genetic.population import Population
 from genetic.selection_operator import numpy_rouletteselection
-import numpy as np
+from utils import StatusUpdateTool, Utils, Log
 import copy
+import numpy as np
 
 
 class EvolveCNN(object):
