@@ -50,6 +50,9 @@ class StatusUpdateTool(object):
     @classmethod
     def is_evolution_running(cls):
         rs = cls.__read_ini_file('evolution_status', 'IS_RUNNING')
+
+        # TODO: remove next line. just here for debugging
+        return False
         if rs == '1':
             return True
         else:
@@ -222,7 +225,7 @@ class GPUTools(object):
             return None
         else:
             Log.info('GPU_QUERY-Available GPUs are: [%s], choose GPU#%s to use' % (
-            ','.join(unused_gpu_ids), unused_gpu_ids[0]))
+                ','.join(unused_gpu_ids), unused_gpu_ids[0]))
             return int(unused_gpu_ids[0])
 
     @classmethod
@@ -377,7 +380,7 @@ class Utils(object):
 
     @classmethod
     def read_template(cls):
-        _path = './template/cifar10.py'
+        _path = './template/cifar11.py'
         part1 = []
         part2 = []
         part3 = []
@@ -428,7 +431,7 @@ class Utils(object):
                 out_channel_list.append(out_channel_list[-1])
                 image_output_size = int(image_output_size / 2)
         fully_layer_name = 'self.linear = nn.Linear(%d, %d)' % (
-        image_output_size * image_output_size * out_channel_list[-1], StatusUpdateTool.get_num_class())
+            image_output_size * image_output_size * out_channel_list[-1], StatusUpdateTool.get_num_class())
         # print(fully_layer_name, out_channel_list, image_output_size)
 
         # generate the forward part
@@ -444,9 +447,9 @@ class Utils(object):
 
             else:
                 if u.max_or_avg < 0.5:
-                    _str = 'out_%d = F.max_pool2d(out_%d, 2)' % (i, i - 1)
+                    _str = 'out_%d = nn.functional.max_pool2d(out_%d, 2)' % (i, i - 1)
                 else:
-                    _str = 'out_%d = F.avg_pool2d(out_%d, 2)' % (i, i - 1)
+                    _str = 'out_%d = nn.functional.avg_pool2d(out_%d, 2)' % (i, i - 1)
                 forward_list.append(_str)
         forward_list.append('out = out_%d' % (len(indi.units) - 1))
         # print('\n'.join(forward_list))
@@ -458,10 +461,10 @@ class Utils(object):
         _str.append(current_time)
         _str.append('"""')
         _str.extend(part1)
-        _str.append('\n        %s' % ('#conv unit'))
+        _str.append('\n        %s' % ('# conv unit'))
         for s in conv_list:
             _str.append('        %s' % (s))
-        _str.append('\n        %s' % ('#linear unit'))
+        _str.append('\n        %s' % ('# linear unit'))
         _str.append('        %s' % (fully_layer_name))
 
         _str.extend(part2)
@@ -470,10 +473,8 @@ class Utils(object):
         _str.extend(part3)
         # print('\n'.join(_str))
         file_name = './scripts/%s.py' % (indi.id)
-        script_file_handler = open(file_name, 'w')
-        script_file_handler.write('\n'.join(_str))
-        script_file_handler.flush()
-        script_file_handler.close()
+        with open(file_name, 'w') as script_file_handler:
+            script_file_handler.write('\n'.join(_str))
 
     @classmethod
     def write_to_file(cls, _str, _file):

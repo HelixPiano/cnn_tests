@@ -16,6 +16,8 @@ class FitnessEvaluate(object):
         for indi in self.individuals:
             Utils.generate_pytorch_file(indi)
         self.log.info('Finish the generation of python files')
+        #TODO: Remove exit call. Just here for debugging
+        exit(0)
 
     def evaluate(self):
         """

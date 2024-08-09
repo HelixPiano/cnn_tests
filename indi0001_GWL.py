@@ -1,17 +1,17 @@
 """
 2024-08-06  16:04:04
 """
-import torch.nn as nn
-import torch
-import os
-import lightning as L
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-import sys
+from datetime import datetime
 from lightning.pytorch.callbacks import TQDMProgressBar
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from torchvision import datasets, transforms
+import lightning as L
+import os
+import sys
+import torch
+import torch.nn as nn
 import torch.utils.data as tdata
 import torchmetrics as tm
-from datetime import datetime
 
 
 class BasicBlock(nn.Module):
