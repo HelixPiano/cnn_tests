@@ -125,11 +125,11 @@ class CIFAR10DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(self.data_train, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, pin_memory=True,persistent_workers=True)
+                                           num_workers=self.num_workers, pin_memory=True, persistent_workers=True)
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.data_val, batch_size=self.batch_size,
-                                           num_workers=self.num_workers, pin_memory=True,persistent_workers=True)
+                                           num_workers=self.num_workers, pin_memory=True, persistent_workers=True)
 
 
 def training_loop() -> None:
@@ -174,14 +174,13 @@ class LightningModule(L.LightningModule):
         self.valid_acc(y_hat, target)
         self.log('valid_acc', self.valid_acc, on_step=False, on_epoch=True)
 
-
     def configure_optimizers(self):
         return torch.optim.Adam(self.model.parameters(), lr=0.0001)
 
     def on_train_epoch_end(self) -> None:
         self.log_record('Train-Epoch:%3d,  Loss: %.3f, Acc:%.3f' % (
-        self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
-        self.trainer.logged_metrics.get("valid_acc").item()))
+            self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
+            self.trainer.logged_metrics.get("valid_acc").item()))
         # pass
 
     def log_record(self, _str, first_time=None):
