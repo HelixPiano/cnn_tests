@@ -45,33 +45,13 @@ class FitnessEvaluate(object):
                     _module = importlib.import_module('.', module_name)
                 else:
                     _module = importlib.import_module('.', module_name)
-                print(module_name)
+                _module.training_loop()
             else:
                 file_name = indi.id
                 self.log.info('%s has inherited the fitness as %.5f, no need to evaluate' % (file_name, indi.acc))
                 with open('./populations/after_%s.txt' % (file_name[4:6]), 'a+') as f:
                     f.write('%s=%.5f\n' % (file_name, indi.acc))
 
-        """
-        once the last individual has been pushed into the gpu, the code above will finish.
-        so, a while-loop need to be insert here to check whether all GPU are available.
-        Only all available are available, we can call "the evaluation for all individuals
-        in this generation" has been finished.
-
-        """
-        if has_evaluated_offspring:
-            all_finished = False
-            while all_finished is not True:
-                time.sleep(300)
-                all_finished = GPUTools.all_gpu_available()
-        """
-        the reason that using "has_evaluated_offspring" is that:
-        If all individuals are evaluated, there is no needed to wait for 300 seconds indicated in line#47
-        """
-        """
-        When the codes run to here, it means all the individuals in this generation have been evaluated, then to save to the list with the key and value
-        Before doing so, individuals that have been evaluated in this run should retrieval their fitness first.
-        """
         if has_evaluated_offspring:
             file_name = './populations/after_%s.txt' % (self.individuals[0].id[4:6])
             assert os.path.exists(file_name) == True
