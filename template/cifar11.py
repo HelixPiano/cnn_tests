@@ -1,15 +1,17 @@
 """
-import torch.nn as nn
-import torch
-import os
-import lightning as L
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-import sys
+from datetime import datetime
 from lightning.pytorch.callbacks import TQDMProgressBar
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from torchvision import datasets, transforms
+import lightning as L
+import logging
+import os
+import sys
+import torch
+import torch.nn as nn
 import torch.utils.data as tdata
 import torchmetrics as tm
-from datetime import datetime
+import warnings
 
 
 class BasicBlock(nn.Module):
@@ -100,6 +102,8 @@ class CIFAR10DataModule(L.LightningDataModule):
 
 
 def training_loop() -> None:
+    warnings.filterwarnings("ignore", ".*Consider increasing the value of the `num_workers` argument*")
+    logging.getLogger("lightning.pytorch").setLevel(logging.ERROR)
     if torch.cuda.is_available():
         torch.backends.cudnn.benchmark = True
         torch.set_float32_matmul_precision('high')
