@@ -108,7 +108,8 @@ def training_loop() -> None:
 
     data_module = CIFAR10DataModule()
 
-    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, enable_checkpointing=False,
+    trainer = L.Trainer(max_epochs=1, fast_dev_run=False, accelerator="gpu", logger=False, precision="bf16-mixed",
+                        enable_checkpointing=False,
                         callbacks=[MyProgressBar(), EarlyStopping(monitor="valid_acc", mode="max", patience=10)])
 
     trainer.fit(model, data_module)
@@ -147,10 +148,10 @@ class LightningModule(L.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         self.log_record('Train-Epoch:%3d,  Loss: %.3f, Acc:%.3f' % (
-            self.current_epoch, self.trainer.logged_metrics.get("my_loss").item(),
-            self.trainer.logged_metrics.get("valid_acc").item()))
-        if self.trainer.logged_metrics.get("valid_acc").item() > self.best_acc:
-            self.best_acc = self.trainer.logged_metrics.get("valid_acc").item()
+            self.current_epoch, self.trainer.logged_metrics.get("my_loss").detach(),
+            self.trainer.logged_metrics.get("valid_acc").detach()))
+        if self.trainer.logged_metrics.get("valid_acc").detach() > self.best_acc:
+            self.best_acc = self.trainer.logged_metrics.get("valid_acc").detach()
 
     def on_train_end(self) -> None:
         self.log_record('Finished-Acc:%.3f' % self.best_acc)
