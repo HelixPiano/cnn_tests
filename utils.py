@@ -8,6 +8,7 @@ import os
 import sys
 import time
 
+
 class StatusUpdateTool(object):
     @classmethod
     def clear_config(cls):
@@ -208,7 +209,7 @@ class GPUTools(object):
             if id_ not in used_gpu_ids:
                 unused_gpu_ids.append(id_)
 
-        return ['0']
+        return unused_gpu_ids
 
     @classmethod
     def detect_available_gpu_id(cls):

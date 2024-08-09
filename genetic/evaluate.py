@@ -88,7 +88,6 @@ class FitnessEvaluate(object):
                         self.log.warn(
                             'The individuals have been evaluated, but the records are not correct, the fitness of %s does not exist in %s, wait 120 seconds' % (
                                 indi.id, file_name))
-                        sleep(120)  #
                     indi.acc = fitness_map[indi.id]
         else:
             self.log.info('None offspring has been evaluated')
