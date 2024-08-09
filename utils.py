@@ -50,9 +50,6 @@ class StatusUpdateTool(object):
     @classmethod
     def is_evolution_running(cls):
         rs = cls.__read_ini_file('evolution_status', 'IS_RUNNING')
-
-        # TODO: remove next line. just here for debugging
-        return False
         if rs == '1':
             return True
         else:
@@ -115,14 +112,11 @@ class StatusUpdateTool(object):
 
     @classmethod
     def get_init_params(cls):
-        params = {}
-        params['pop_size'] = cls.get_pop_size()
-        params['min_conv'], params['max_conv'] = cls.get_conv_limit()
-        params['min_pool'], params['max_pool'] = cls.get_pool_limit()
-        params['max_len'] = cls.get_individual_max_length()
-        params['image_channel'] = cls.get_input_channel()
-        params['output_channel'] = cls.get_output_channel()
-        params['genetic_prob'] = cls.get_genetic_probability()
+        params = {'pop_size': cls.get_pop_size(), 'min_conv': (cls.get_conv_limit())[0],
+                  'max_conv': (cls.get_conv_limit())[1], 'min_pool': (cls.get_pool_limit())[0],
+                  'max_pool': (cls.get_pool_limit())[1], 'max_len': cls.get_individual_max_length(),
+                  'image_channel': cls.get_input_channel(), 'output_channel': cls.get_output_channel(),
+                  'genetic_prob': cls.get_genetic_probability()}
         return params
 
     @classmethod
@@ -173,7 +167,7 @@ class Log(object):
 
     @classmethod
     def warn(cls, _str):
-        cls.__get_logger().warn(_str)
+        cls.__get_logger().warning(_str)
 
 
 class GPUTools(object):
@@ -268,31 +262,31 @@ class Utils(object):
     def save_fitness_to_cache(cls, individuals):
         _map = cls.load_cache_data()
         for indi in individuals:
-            _key, _str = indi.uuid()
+            _key, _string = indi.uuid()
             _acc = indi.acc
             if _key not in _map:
                 Log.info('Add record into cache, id:%s, acc:%.5f' % (_key, _acc))
                 f = open('./populations/cache.txt', 'a+')
-                _str = '%s;%.5f;%s\n' % (_key, _acc, _str)
-                f.write(_str)
+                _string = '%s;%.5f;%s\n' % (_key, _acc, _string)
+                f.write(_string)
                 f.close()
                 _map[_key] = _acc
 
     @classmethod
     def save_population_at_begin(cls, _str, gen_no):
-        file_name = './populations/begin_%02d.txt' % (gen_no)
+        file_name = './populations/begin_%02d.txt' % gen_no
         with open(file_name, 'w') as f:
             f.write(_str)
 
     @classmethod
     def save_population_after_crossover(cls, _str, gen_no):
-        file_name = './populations/crossover_%02d.txt' % (gen_no)
+        file_name = './populations/crossover_%02d.txt' % gen_no
         with open(file_name, 'w') as f:
             f.write(_str)
 
     @classmethod
     def save_population_after_mutation(cls, _str, gen_no):
-        file_name = './populations/mutation_%02d.txt' % (gen_no)
+        file_name = './populations/mutation_%02d.txt' % gen_no
         with open(file_name, 'w') as f:
             f.write(_str)
 
@@ -339,7 +333,7 @@ class Utils(object):
                             elif _key == 'out':
                                 conv_params['out_channel'] = int(_value)
                             else:
-                                raise ValueError('Unknown key for load conv unit, key_name:%s' % (_key))
+                                raise ValueError('Unknown key for load conv unit, key_name:%s' % _key)
                         conv = ResUnit(conv_params['number'], conv_params['in_channel'], conv_params['out_channel'])
                         indi.units.append(conv)
                     elif line.startswith('[pool'):
@@ -352,17 +346,17 @@ class Utils(object):
                             elif _key == 'type':
                                 pool_params['max_or_avg'] = float(_value)
                             else:
-                                raise ValueError('Unknown key for load pool unit, key_name:%s' % (_key))
+                                raise ValueError('Unknown key for load pool unit, key_name:%s' % _key)
                         pool = PoolUnit(pool_params['number'], pool_params['max_or_avg'])
                         indi.units.append(pool)
                     else:
-                        print('Unknown key for load unit type, line content:%s' % (line))
+                        print('Unknown key for load unit type, line content:%s' % line)
             pop.individuals.append(indi)
         f.close()
 
         # load the fitness to the individuals who have been evaluated, only suitable for the first generation
         if gen_no == 0:
-            after_file_path = './populations/after_%02d.txt' % (gen_no)
+            after_file_path = './populations/after_%02d.txt' % gen_no
             if os.path.exists(after_file_path):
                 fitness_map = {}
             f = open(after_file_path)
@@ -442,39 +436,39 @@ class Utils(object):
             else:
                 last_out_put = 'out_%d' % (i - 1)
             if u.type == 1:
-                _str = 'out_%d = self.conv_%d_%d(%s)' % (i, u.in_channel, u.out_channel, last_out_put)
-                forward_list.append(_str)
+                _string = 'out_%d = self.conv_%d_%d(%s)' % (i, u.in_channel, u.out_channel, last_out_put)
+                forward_list.append(_string)
 
             else:
                 if u.max_or_avg < 0.5:
-                    _str = 'out_%d = nn.functional.max_pool2d(out_%d, 2)' % (i, i - 1)
+                    _string = 'out_%d = nn.functional.max_pool2d(out_%d, 2)' % (i, i - 1)
                 else:
-                    _str = 'out_%d = nn.functional.avg_pool2d(out_%d, 2)' % (i, i - 1)
-                forward_list.append(_str)
+                    _string = 'out_%d = nn.functional.avg_pool2d(out_%d, 2)' % (i, i - 1)
+                forward_list.append(_string)
         forward_list.append('out = out_%d' % (len(indi.units) - 1))
         # print('\n'.join(forward_list))
 
         part1, part2, part3 = cls.read_template()
-        _str = []
+        _string = []
         current_time = time.strftime("%Y-%m-%d  %H:%M:%S")
-        _str.append('"""')
-        _str.append(current_time)
-        _str.append('"""')
-        _str.extend(part1)
-        _str.append('\n        %s' % ('# conv unit'))
+        _string.append('"""')
+        _string.append(current_time)
+        _string.append('"""')
+        _string.extend(part1)
+        _string.append('\n        %s' % '# conv unit')
         for s in conv_list:
-            _str.append('        %s' % (s))
-        _str.append('\n        %s' % ('# linear unit'))
-        _str.append('        %s' % (fully_layer_name))
+            _string.append('        %s' % s)
+        _string.append('\n        %s' % '# linear unit')
+        _string.append('        %s' % fully_layer_name)
 
-        _str.extend(part2)
+        _string.extend(part2)
         for s in forward_list:
-            _str.append('        %s' % (s))
-        _str.extend(part3)
+            _string.append('        %s' % s)
+        _string.extend(part3)
         # print('\n'.join(_str))
-        file_name = './scripts/%s.py' % (indi.id)
+        file_name = './scripts/%s.py' % indi.id
         with open(file_name, 'w') as script_file_handler:
-            script_file_handler.write('\n'.join(_str))
+            script_file_handler.write('\n'.join(_string))
 
     @classmethod
     def write_to_file(cls, _str, _file):

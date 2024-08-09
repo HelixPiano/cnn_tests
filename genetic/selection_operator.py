@@ -2,19 +2,19 @@ import numpy as np
 
 
 def rouletteselection(_a, k):
-    a = np.asarray(_a)
-    idx = np.argsort(a)
+    b = np.asarray(_a)
+    idx = np.argsort(b)
     idx = idx[::-1]
-    sort_a = a[idx]
-    sum_a = np.sum(a).astype(np.float32)
+    sort_a = b[idx]
+    sum_a = np.sum(b).astype(np.float32)
     selected_indices = []
     for i in range(k):
         u = np.random.rand() * sum_a
         sum_ = 0
-        for l in range(sort_a.shape[0]):
-            sum_ += sort_a[l]
+        for index in range(sort_a.shape[0]):
+            sum_ += sort_a[index]
             if sum_ > u:
-                selected_indices.append(idx[l])
+                selected_indices.append(idx[index])
                 break
     return selected_indices
 
