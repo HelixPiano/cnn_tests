@@ -2,7 +2,7 @@ from utils import StatusUpdateTool, Utils, Log
 from genetic.population import Population
 from genetic.evaluate import FitnessEvaluate
 from genetic.crossover_and_mutation import CrossoverAndMutation
-from genetic.selection_operator import Selection
+from genetic.selection_operator import numpy_rouletteselection
 import numpy as np
 import copy
 
@@ -52,8 +52,7 @@ class EvolveCNN(object):
         # add log
         # find the largest one's index
         max_index = np.argmax(v_list)
-        selection = Selection()
-        selected_index_list = selection.RouletteSelection(v_list, k=self.params['pop_size'])
+        selected_index_list = numpy_rouletteselection(v_list, k=self.params['pop_size'])
         if max_index not in selected_index_list:
             first_selectd_v_list = [v_list[i] for i in selected_index_list]
             min_idx = np.argmin(first_selectd_v_list)

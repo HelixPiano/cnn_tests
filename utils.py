@@ -478,10 +478,8 @@ class Utils(object):
 
     @classmethod
     def write_to_file(cls, _str, _file):
-        f = open(_file, 'w')
-        f.write(_str)
-        f.flush()
-        f.close()
+        with open(_file, 'w') as f:
+            f.write(_str)
 
 
 if __name__ == '__main__':

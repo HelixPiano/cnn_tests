@@ -53,10 +53,8 @@ class FitnessEvaluate(object):
             else:
                 file_name = indi.id
                 self.log.info('%s has inherited the fitness as %.5f, no need to evaluate' % (file_name, indi.acc))
-                f = open('./populations/after_%s.txt' % (file_name[4:6]), 'a+')
-                f.write('%s=%.5f\n' % (file_name, indi.acc))
-                f.flush()
-                f.close()
+                with open('./populations/after_%s.txt' % (file_name[4:6]), 'a+') as f:
+                    f.write('%s=%.5f\n' % (file_name, indi.acc))
 
         """
         once the last individual has been pushed into the gpu, the code above will finish.
