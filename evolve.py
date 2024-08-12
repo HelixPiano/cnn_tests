@@ -89,12 +89,28 @@ class EvolveCNN(object):
                 raise ValueError('The running flag is set to be running, but there is no generated population stored')
         else:
             gen_no = 0
+
+            dir_names = ["log", "populations"]
+            for directory in dir_names:
+                files = os.listdir(directory)
+                for file in files:
+                    if file.endswith(".txt"):
+                        os.remove(os.path.join(directory, file))
+
+            script_files = os.listdir("scripts")
+            for file in script_files:
+                if "indi0" in file:
+                    os.remove(os.path.join("scripts", file))
+
             Log.info('Initialize...')
             self.initialize_population()
+
         Log.info('EVOLVE[%d-gen]-Begin to evaluate the fitness' % gen_no)
         self.fitness_evaluate()
         Log.info('EVOLVE[%d-gen]-Finish the evaluation' % gen_no)
         gen_no += 1
+        assert gen_no < max_gen
+
         for curr_gen in range(gen_no, max_gen):
             self.params['gen_no'] = curr_gen
             # step 3
@@ -108,26 +124,13 @@ class EvolveCNN(object):
 
             self.environment_selection()
             Log.info('EVOLVE[%d-gen]-Finish the environment selection' % curr_gen)
-
         StatusUpdateTool.end_evolution()
 
 
 def run_evolution():
-    dir_names = ["log", "populations"]
-    for directory in dir_names:
-        files = os.listdir(directory)
-        for file in files:
-            if file.endswith(".txt"):
-                os.remove(os.path.join(directory, file))
-
-    script_files = os.listdir("scripts")
-    for file in script_files:
-        if "indi0" in file:
-            os.remove(os.path.join("scripts", file))
-
     parameter = StatusUpdateTool.get_init_params()
     evocnn = EvolveCNN(parameter)
-    evocnn.do_work(max_gen=20)
+    evocnn.do_work(max_gen=5)
 
 
 if __name__ == '__main__':
