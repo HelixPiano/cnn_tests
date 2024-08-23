@@ -113,7 +113,8 @@ class EvolveCNN(object):
 
         for curr_gen in range(gen_no, max_gen):
             self.params['gen_no'] = curr_gen
-            # step 3
+
+            #
             Log.info('EVOLVE[%d-gen]-Begin to crossover and mutation' % curr_gen)
             self.crossover_and_mutation()
             Log.info('EVOLVE[%d-gen]-Finish crossover and mutation' % curr_gen)
@@ -136,4 +137,4 @@ def run_evolution():
 if __name__ == '__main__':
     params = StatusUpdateTool.get_init_params()
     evoCNN = EvolveCNN(params)
-    evoCNN.do_work(max_gen=5)
+    evoCNN.do_work(max_gen=20)

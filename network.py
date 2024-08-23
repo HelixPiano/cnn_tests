@@ -22,14 +22,14 @@ class Network(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=(1, 1)),
         )
         self.layer4 = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=29, kernel_size=(3, 7)),
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=(3, 7)),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=(1, 1)),
             nn.AdaptiveAvgPool2d((1, 1))
         )
-        # self.layer5 = nn.Sequential(
-        #     nn.Linear(in_features=256, out_features=29),
-        # )
+        self.layer5 = nn.Sequential(
+            nn.Linear(in_features=256, out_features=29),
+        )
 
     def forward(self, nn_input: torch.FloatTensor):
         x = self.layer1(nn_input)
@@ -37,7 +37,7 @@ class Network(nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
         x = torch.flatten(x, 1)
-        # x = self.layer5(x)
+        x = self.layer5(x)
         return x
 
 
